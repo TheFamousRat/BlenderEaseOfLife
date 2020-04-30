@@ -22,6 +22,11 @@ def objValidToExport(obj, extraCollections):
         
     return (c1 and c2 and c4)
 
+def makeFormatDir(format):
+    if not os.path.exists(os.path.join(absOutputFolder,format)):
+                os.makedirs(os.path.join(absOutputFolder,format))
+    return format
+
 basedir = bpy.path.abspath('//')
 absOutputFolder = os.path.join(basedir, outputFolder)
 outpoutedMeshes = []
@@ -46,9 +51,7 @@ for obj in selectedObj:
             prevLoc = obj.location.copy()
             obj.location *= 0
             
-            format = 'gltf'
-            if not os.path.exists(os.path.join(absOutputFolder,format)):
-                os.makedirs(os.path.join(absOutputFolder,format))
+            format = makeFormatDir('gltf')
             
             bpy.ops.export_scene.gltf(
                 filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
@@ -60,9 +63,7 @@ for obj in selectedObj:
                 export_materials=True
             )
             
-            format = 'obj'
-            if not os.path.exists(os.path.join(absOutputFolder,format)):
-                os.makedirs(os.path.join(absOutputFolder,format))
+            format = makeFormatDir('obj')
             
             bpy.ops.export_scene.obj(
                 filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
@@ -70,11 +71,25 @@ for obj in selectedObj:
                 use_mesh_modifiers=applyModifiers
             )
             
-            format = 'stl'
-            if not os.path.exists(os.path.join(absOutputFolder,format)):
-                os.makedirs(os.path.join(absOutputFolder,format))
+            format = makeFormatDir('stl')
             
             bpy.ops.export_mesh.stl(
+                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
+                use_selection=useSelection,
+                use_mesh_modifiers=applyModifiers
+            )
+            
+            format = makeFormatDir('fbx')
+            
+            bpy.ops.export_scene.fbx(
+                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
+                use_selection=useSelection,
+                use_mesh_modifiers=applyModifiers
+            )
+            
+            format = makeFormatDir('x3d')
+            
+            bpy.ops.export_scene.fbx(
                 filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
                 use_selection=useSelection,
                 use_mesh_modifiers=applyModifiers

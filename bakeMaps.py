@@ -3,22 +3,22 @@ import os
 
 ###### PARAMETERS ######
 
-outputFolder = 'textures'#Relative path from .blend file
+outputFolder = ''#Relative path from .blend file
 marginParam = 8.0
-defaultBakedImageDim = 512
+defaultBakedImageDim = 1024
 meshesDim = {
 "Scarf" : 128,
 "Eyes" : 128,
 "Nose" : 256,
 "Teeth" : 256,
-"Theodore" : 512
+"Theodore" : 2048
 }
 passFilters = {'COLOR'}#{'COLOR'}
 bakingTypes = ["Diffuse"]#, "Roughness", "Normal"]
-
+useAlpha = True
 ###### CODE ######
 
-##### CONST
+###### CONST ######
 mapTypeToInput = {
 "Normal" : "Normal", 
 "Roughness" : "Roughness",
@@ -37,7 +37,7 @@ if not os.path.exists(bakedMapsFolder):
 #We check that the image we're going to use, named "Baking", already exist.
 #Otherwise we just create it
 if not "Baking" in bpy.data.images:
-    bpy.data.images.new("Baking", defaultBakedImageDim, defaultBakedImageDim)
+    bpy.data.images.new("Baking", defaultBakedImageDim, defaultBakedImageDim, alpha=useAlpha)
     
 bakingImg = bpy.data.images["Baking"]
 bakingImg.scale(defaultBakedImageDim, defaultBakedImageDim)
@@ -69,6 +69,7 @@ for obj in bpy.data.objects:
 prevEngine = bpy.context.scene.render.engine
 bpy.context.scene.render.engine = 'CYCLES'
 
+gotError = False
 # We keep the states of previous objects
 for selectedItem in originalSelectedMeshes:
     try:
@@ -138,6 +139,7 @@ for selectedItem in originalSelectedMeshes:
             selectedItem.hide_render = True
     except Exception as e:
         print(e)
+        gotError = True
         break
     
 #We then restore the items that were selected
@@ -154,3 +156,6 @@ if previousOutput:
 
 for obj in bpy.data.objects:
     obj.hide_render = prevHideRender[obj]
+    
+if gotError:
+    raise Exception("Got an error")
