@@ -1,5 +1,6 @@
 import bpy
 import os
+import shutil
 
 ###### OPTIONS ######
 
@@ -7,6 +8,8 @@ outputFolder = 'meshes'#Relative path from .blend file
 extraCollections = []#[bpy.data.collections['Stickers']]
 useSelection = True
 applyModifiers = True
+compressFolders = True
+desiredFormats = ['dae','gltf','obj','fbx','stl']
 
 ###### CODE ######
 
@@ -22,10 +25,12 @@ def objValidToExport(obj, extraCollections):
         
     return (c1 and c2 and c4)
 
-def makeFormatDir(format):
+def makeFormatDir(format, absOutputFolder, obj):
+    #Kind of a gimicky method. Creates the folder for the format if it doesn't exist
+    #Also returns the path of the to-be-exported object
     if not os.path.exists(os.path.join(absOutputFolder,format)):
                 os.makedirs(os.path.join(absOutputFolder,format))
-    return format
+    return os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format)
 
 basedir = bpy.path.abspath('//')
 absOutputFolder = os.path.join(basedir, outputFolder)
@@ -36,8 +41,8 @@ if not os.path.exists(absOutputFolder):
 
 selectedObj = bpy.context.selected_objects.copy()
 
-for obj in selectedObj:
-    try:
+try:
+    for obj in selectedObj:
         if objValidToExport(obj, extraCollections) and (not obj.data in outpoutedMeshes):
             outpoutedMeshes.append(obj.data)
             bpy.ops.object.select_all(action='DESELECT')
@@ -51,55 +56,73 @@ for obj in selectedObj:
             prevLoc = obj.location.copy()
             obj.location *= 0
             
-            format = makeFormatDir('gltf')
+            format = 'gltf'
+            if format in desiredFormats:
+                exportPath = makeFormatDir('gltf', absOutputFolder, obj)
+                
+                bpy.ops.export_scene.gltf(
+                    filepath=exportPath,
+                    export_format='GLTF_EMBEDDED',
+                    export_copyright="TheFamousRat",
+                    export_selected=useSelection,
+                    export_apply=applyModifiers,
+                    export_colors=False,
+                    export_materials=True
+                )
+                
+            format = 'obj'
+            if format in desiredFormats:
+                exportPath = makeFormatDir('obj', absOutputFolder, obj)
+                
+                bpy.ops.export_scene.obj(
+                    filepath=exportPath,
+                    use_selection=useSelection,
+                    use_mesh_modifiers=applyModifiers
+                )
             
-            bpy.ops.export_scene.gltf(
-                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
-                export_format='GLTF_EMBEDDED',
-                export_copyright="TheFamousRat",
-                export_selected=useSelection,
-                export_apply=applyModifiers,
-                export_colors=False,
-                export_materials=True
-            )
-            
-            format = makeFormatDir('obj')
-            
-            bpy.ops.export_scene.obj(
-                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
-                use_selection=useSelection,
-                use_mesh_modifiers=applyModifiers
-            )
-            
-            format = makeFormatDir('stl')
-            
-            bpy.ops.export_mesh.stl(
-                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
-                use_selection=useSelection,
-                use_mesh_modifiers=applyModifiers
-            )
-            
-            format = makeFormatDir('fbx')
-            
-            bpy.ops.export_scene.fbx(
-                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
-                use_selection=useSelection,
-                use_mesh_modifiers=applyModifiers
-            )
-            
-            format = makeFormatDir('x3d')
-            
-            bpy.ops.export_scene.fbx(
-                filepath=os.path.join(absOutputFolder, format, toAlphaNum(obj.data.name) + '.' + format),
-                use_selection=useSelection,
-                use_mesh_modifiers=applyModifiers
-            )
+            format = 'stl'
+            if format in desiredFormats:
+                exportPath = makeFormatDir('stl', absOutputFolder, obj)
+                
+                bpy.ops.export_mesh.stl(
+                    filepath=exportPath,
+                    use_selection=useSelection,
+                    use_mesh_modifiers=applyModifiers
+                )
+                
+            format = 'fbx'
+            if format in desiredFormats:
+                exportPath = makeFormatDir('fbx', absOutputFolder, obj)
+                
+                bpy.ops.export_scene.fbx(
+                    filepath=exportPath,
+                    use_selection=useSelection,
+                    use_mesh_modifiers=applyModifiers
+                )
+                
+            format = 'dae'
+            if format in desiredFormats:
+                exportPath = makeFormatDir('dae', absOutputFolder, obj)
+                
+                bpy.ops.wm.collada_export(
+                    filepath=exportPath,
+                    selected=useSelection,
+                    apply_modifiers=applyModifiers
+                )
             
             obj.location = prevLoc
-    except Exception as e:
-        print(e)
-        break
+
+    if compressFolders:
+        blendFileName = os.path.splitext(bpy.path.basename(bpy.data.filepath))[0]
         
+        for format in desiredFormats:
+            exportPath = os.path.join(absOutputFolder,format)
+            print(exportPath)
+            shutil.make_archive(os.path.join(absOutputFolder, blendFileName + '_' + format.upper()), 'zip', exportPath)
+            
+except Exception as e:
+    print(e) 
+
 bpy.ops.object.select_all(action='DESELECT')
 for obj in selectedObj:
     obj.select_set(True)

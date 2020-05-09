@@ -3,18 +3,18 @@ import os
 
 ###### PARAMETERS ######
 
-outputFolder = ''#Relative path from .blend file
+outputFolder = 'textures'#Relative path from .blend file
 marginParam = 8.0
-defaultBakedImageDim = 1024
+defaultBakedImageDim = (1024,1024)
 meshesDim = {
-"Scarf" : 128,
-"Eyes" : 128,
-"Nose" : 256,
-"Teeth" : 256,
-"Theodore" : 2048
+"Scarf" : (128,128),
+"Eyes" : (128,128),
+"Nose" : (256,256),
+"Teeth" : (256,256),
+"Theodore" : (2048,2048)
 }
 passFilters = {'COLOR'}#{'COLOR'}
-bakingTypes = ["Diffuse"]#, "Roughness", "Normal"]
+bakingTypes = ["Roughness", "Normal","Emit"]
 useAlpha = True
 ###### CODE ######
 
@@ -22,7 +22,9 @@ useAlpha = True
 mapTypeToInput = {
 "Normal" : "Normal", 
 "Roughness" : "Roughness",
-"Diffuse" : "Base Color"}
+"Diffuse" : "Base Color",
+"Combined" : "Base Color",
+"Emit" : "Emission"}
 
 def toAlphaNum(str):
     return ''.join([c if (c.isalnum() or c=='_') else '' for c in str])
@@ -37,10 +39,10 @@ if not os.path.exists(bakedMapsFolder):
 #We check that the image we're going to use, named "Baking", already exist.
 #Otherwise we just create it
 if not "Baking" in bpy.data.images:
-    bpy.data.images.new("Baking", defaultBakedImageDim, defaultBakedImageDim, alpha=useAlpha)
+    bpy.data.images.new("Baking", defaultBakedImageDim[0], defaultBakedImageDim[1], alpha=useAlpha)
     
 bakingImg = bpy.data.images["Baking"]
-bakingImg.scale(defaultBakedImageDim, defaultBakedImageDim)
+bakingImg.scale(defaultBakedImageDim[0], defaultBakedImageDim[1])
 
 worldNodeTree = bpy.context.scene.world.node_tree
 worldOutputNode = worldNodeTree.nodes["World Output"]
@@ -81,9 +83,9 @@ for selectedItem in originalSelectedMeshes:
             selectedItem.hide_render = False
             
             if not selectedItem.name in meshesDim:
-                bakingImg.scale(defaultBakedImageDim,defaultBakedImageDim)
+                bakingImg.scale(defaultBakedImageDim[0],defaultBakedImageDim[1])
             else:
-                bakingImg.scale(meshesDim[selectedItem.name],meshesDim[selectedItem.name])
+                bakingImg.scale(meshesDim[selectedItem.name][0],meshesDim[selectedItem.name][1])
             
             for mat in selectedItem.data.materials:
                 if mat:
@@ -125,11 +127,17 @@ for selectedItem in originalSelectedMeshes:
                 texNode.location.x = principledNode.location.x - principledNode.width * 2.0
                 texNode.location.y = principledNode.location.y - (principledNode.height+texNode.height) + ((len(principledNode.inputs)*0.5)-currentInputId)*texNode.height*0.5
                 texNode.image = bpy.data.images.load(texPath, check_existing=True)
+                
+                if currentType.upper() == 'EMIT' or currentType.upper() == 'DIFFUSE':
+                    texNode.image.colorspace_settings.name = 'sRGB'
+                else:
+                    texNode.image.colorspace_settings.name = 'Non-Color'
+                
                 #Link it
                 if currentType == 'Normal':
                     normalMapNode = bakedMat.node_tree.nodes.new("ShaderNodeNormalMap")
                     normalMapNode.location = texNode.location
-                    normalMapNode.space = 'OBJECT'
+                    #normalMapNode.space = 'OBJECT'
                     texNode.location.x -= normalMapNode.width * 2.0
                     bakedMat.node_tree.links.new(normalMapNode.inputs["Color"], texNode.outputs["Color"])
                     bakedMat.node_tree.links.new(principledNode.inputs["Normal"], normalMapNode.outputs["Normal"])
